@@ -12,7 +12,7 @@ import (
 )
 
 import (
-	"github.com/wandoulabs/codis/extern/redis-port/utils"
+	"github.com/diditaxi/codis/extern/redis-port/utils"
 )
 
 func Sync(ncpu int, from, target string) {

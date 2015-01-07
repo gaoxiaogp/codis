@@ -13,8 +13,8 @@ import (
 )
 
 import (
-	"github.com/wandoulabs/codis/extern/redis-port/rdb"
-	"github.com/wandoulabs/codis/extern/redis-port/utils"
+	"github.com/diditaxi/codis/extern/redis-port/rdb"
+	"github.com/diditaxi/codis/extern/redis-port/utils"
 )
 
 func Decode(ncpu int, input, output string) {

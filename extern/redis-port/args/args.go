@@ -10,7 +10,7 @@ import (
 
 import (
 	"github.com/docopt/docopt-go"
-	"github.com/wandoulabs/codis/extern/redis-port/utils"
+	"github.com/diditaxi/codis/extern/redis-port/utils"
 )
 
 var (

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wandoulabs/codis/pkg/proxy/parser"
+	"github.com/diditaxi/codis/pkg/proxy/parser"
 
 	"github.com/juju/errors"
 	stats "github.com/ngaut/gostats"

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/wandoulabs/codis/pkg/models"
+	"github.com/diditaxi/codis/pkg/models"
 
 	"github.com/docopt/docopt-go"
 	log "github.com/ngaut/logging"

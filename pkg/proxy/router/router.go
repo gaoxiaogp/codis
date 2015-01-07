@@ -15,13 +15,13 @@ import (
 	"sync"
 	"time"
 
-	topo "github.com/wandoulabs/codis/pkg/proxy/router/topology"
+	topo "github.com/diditaxi/codis/pkg/proxy/router/topology"
 
-	"github.com/wandoulabs/codis/pkg/models"
-	"github.com/wandoulabs/codis/pkg/proxy/cachepool"
-	"github.com/wandoulabs/codis/pkg/proxy/group"
-	"github.com/wandoulabs/codis/pkg/proxy/parser"
-	"github.com/wandoulabs/codis/pkg/proxy/redispool"
+	"github.com/diditaxi/codis/pkg/models"
+	"github.com/diditaxi/codis/pkg/proxy/cachepool"
+	"github.com/diditaxi/codis/pkg/proxy/group"
+	"github.com/diditaxi/codis/pkg/proxy/parser"
+	"github.com/diditaxi/codis/pkg/proxy/redispool"
 
 	"github.com/juju/errors"
 	stats "github.com/ngaut/gostats"
