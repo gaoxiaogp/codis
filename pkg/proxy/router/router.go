@@ -56,6 +56,8 @@ type Server struct {
 	//counter
 	counter   *stats.Counters
 	OnSuicide OnSuicideFun
+
+	ipwhiteList map[string]string
 }
 
 func (s *Server) clearSlot(i int) {
@@ -345,7 +347,17 @@ func (s *Server) Run() {
 			log.Warning(errors.ErrorStack(err))
 			continue
 		}
-		go s.handleConn(conn)
+
+		if s.ipwhiteList == nil {
+			go s.handleConn(conn)
+		} else {
+			ip, _, _ := net.SplitHostPort(conn.RemoteAddr().String())
+			if _, ok := s.ipwhiteList[ip]; ok {
+				go s.handleConn(conn)
+			} else {
+				conn.Close()
+			}
+		}
 	}
 }
 
@@ -561,7 +573,7 @@ func (s *Server) RegisterAndWait() {
 	s.waitOnline()
 }
 
-func NewServer(addr string, debugVarAddr string, conf *Conf) *Server {
+func NewServer(addr string, debugVarAddr string, conf *Conf, ipwhiteList map[string]string) *Server {
 	log.Infof("%+v", conf)
 	s := &Server{
 		evtbus:            make(chan interface{}, 100),
@@ -573,6 +585,7 @@ func NewServer(addr string, debugVarAddr string, conf *Conf) *Server {
 		concurrentLimiter: tokenlimiter.NewTokenLimiter(100),
 		moper:             NewMultiOperator(addr),
 		pools:             cachepool.NewCachePool(),
+		ipwhiteList:       ipwhiteList,
 	}
 
 	s.mu.Lock()

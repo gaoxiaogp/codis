@@ -4,12 +4,15 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"path"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"github.com/diditaxi/codis/pkg/proxy/router"
 	"github.com/diditaxi/codis/pkg/utils"
@@ -19,16 +22,18 @@ import (
 )
 
 var (
-	cpus       = 2
-	addr       = ":9000"
-	httpAddr   = ":9001"
-	configFile = "config.ini"
+	cpus          = 2
+	addr          = ":9000"
+	httpAddr      = ":9001"
+	configFile    = "config.ini"
+	whitelistFile = ""
 )
 
-var usage = `usage: proxy [-c <config_file>] [-L <log_file>] [--log-level=<loglevel>] [--cpu=<cpu_num>] [--addr=<proxy_listen_addr>] [--http-addr=<debug_http_server_addr>]
+var usage = `usage: proxy [-c <config_file>] [-w <whitelist_file>] [-L <log_file>] [--log-level=<loglevel>] [--cpu=<cpu_num>] [--addr=<proxy_listen_addr>] [--http-addr=<debug_http_server_addr>]
 
 options:
    -c	set config file
+   -w	set ip whitelist file
    -L	set output log file, default is stdout
    --log-level=<loglevel>	set log level: info, warn, error, debug [default: info]
    --cpu=<cpu_num>		num of cpu cores that proxy can use
@@ -51,6 +56,31 @@ func handleSetLogLevel(w http.ResponseWriter, r *http.Request) {
 	log.Info("set log level to", level)
 }
 
+func readWhiteList(fPath string) map[string]string {
+	whitelist := make(map[string]string)
+
+	f, err := os.Open(fPath)
+	defer f.Close()
+
+	if err == nil {
+		buff := bufio.NewReader(f)
+		for {
+			line, err := buff.ReadString('\n')
+			if err != nil {
+				break
+			}
+			if strings.HasPrefix(line, "#") || line == "" {
+				continue
+			}
+			line = line[0 : len(line)-1]
+			whitelist[line] = ""
+		}
+		return whitelist
+	}
+
+	return nil
+}
+
 func main() {
 	fmt.Print(banner)
 	log.SetLevelByString("info")
@@ -63,6 +93,11 @@ func main() {
 	// set config file
 	if args["-c"] != nil {
 		configFile = args["-c"].(string)
+	}
+
+	// set whitelist file
+	if args["-w"] != nil {
+		whitelistFile = args["-w"].(string)
 	}
 
 	// set output log file
@@ -108,7 +143,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	s := router.NewServer(addr, httpAddr, conf)
+
+	var ipwhielist map[string]string
+	if whitelistFile != "" {
+		ipwhielist = readWhiteList(whitelistFile)
+	}
+
+	s := router.NewServer(addr, httpAddr, conf, ipwhielist)
 	s.Run()
 	log.Warning("exit")
 }
