@@ -55,6 +55,12 @@ func handleSetLogLevel(w http.ResponseWriter, r *http.Request) {
 	log.SetLevelByString(level)
 	log.Info("set log level to", level)
 }
+func handleChangeLog(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	name := r.Form.Get("name")
+	log.SetOutputByName(name)
+	log.Info("set log name to", name)
+}
 
 func readWhiteList(fPath string) map[string]string {
 	whitelist := make(map[string]string)
@@ -137,6 +143,7 @@ func main() {
 	runtime.GOMAXPROCS(cpus)
 
 	http.HandleFunc("/setloglevel", handleSetLogLevel)
+	http.HandleFunc("/changelogname", handleChangeLog)
 	go http.ListenAndServe(httpAddr, nil)
 	log.Info("running on ", addr)
 	conf, err := router.LoadConf(configFile)

@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis"
+	"github.com/diditaxi/codis/pkg/models"
 	"github.com/garyburd/redigo/redis"
 	"github.com/juju/errors"
 	log "github.com/ngaut/logging"
 	"github.com/ngaut/zkhelper"
-	"github.com/diditaxi/codis/pkg/models"
 )
 
 var (
@@ -96,6 +96,7 @@ func InitEnv() {
 		proxyMutex.Lock()
 		s = NewServer(":19000", ":11000",
 			conf,
+			nil,
 		)
 		proxyMutex.Unlock()
 		s.Run()

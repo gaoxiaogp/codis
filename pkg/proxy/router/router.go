@@ -24,9 +24,11 @@ import (
 	"github.com/diditaxi/codis/pkg/proxy/redispool"
 
 	"github.com/juju/errors"
+	"github.com/ngaut/go-zookeeper/zk"
 	stats "github.com/ngaut/gostats"
 	log "github.com/ngaut/logging"
 	"github.com/ngaut/tokenlimiter"
+	"github.com/ngaut/zkhelper"
 )
 
 type Slot struct {
@@ -242,12 +244,26 @@ check_state:
 
 	defer func() {
 		s.mu.RUnlock()
-		sec := time.Since(start).Seconds()
-		if sec > 2 {
-			log.Warningf("op: %s, key:%s, on: %s, too long %d", opstr,
-				string(k), s.slots[i].dst.Master(), int(sec))
+		//sec := time.Since(start).Seconds()
+		msec := time.Since(start).Nanoseconds() / int64(time.Millisecond)
+		//if sec > 2 {
+		//	log.Warningf("op: %s, key:%s, on: %s, too long %d", opstr,
+		//			string(k), s.slots[i].dst.Master(), int(sec))
+		//}
+		if msec > 300 {
+			log.Errorf("op: %s, key:%s, on: %s, cost: %d", opstr,
+				string(k), s.slots[i].dst.Master(), int(msec))
+		} else if msec > 100 {
+			log.Warningf("op: %s, key:%s, on: %s, cost: %d", opstr,
+				string(k), s.slots[i].dst.Master(), int(msec))
+		} else if msec > 50 {
+			log.Infof("op: %s, key:%s, on: %s, cost: %d", opstr,
+				string(k), s.slots[i].dst.Master(), int(msec))
+		} else if msec > 20 {
+			log.Debugf("op: %s, key:%s, on: %s, cost: %d", opstr,
+				string(k), s.slots[i].dst.Master(), int(msec))
 		}
-		recordResponseTime(s.counter, time.Duration(sec)*1000)
+		recordResponseTime(s.counter, time.Duration(msec/1000)*1000)
 		s.concurrentLimiter.Put(token)
 	}()
 
@@ -554,6 +570,15 @@ func (s *Server) waitOnline() {
 		println("wait to be online ", s.pi.Id)
 		log.Warning(s.pi.Id, "wait to be online")
 
+		err = s.top.SetProxyStatus(s.pi.Id, models.PROXY_STATE_ONLINE)
+		if err != nil {
+			log.Fatal(errors.ErrorStack(err))
+		}
+		println("online success", s.pi.Id)
+		log.Warning(s.pi.Id, "online success")
+
+		break
+
 		time.Sleep(3 * time.Second)
 	}
 }
@@ -566,7 +591,7 @@ func (s *Server) FillSlots() {
 
 func (s *Server) RegisterAndWait() {
 	_, err := s.top.CreateProxyInfo(&s.pi)
-	if err != nil {
+	if err != nil && !zkhelper.ZkErrorEqual(err, zk.ErrNodeExists) {
 		log.Fatal(errors.ErrorStack(err))
 	}
 
