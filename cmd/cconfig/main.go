@@ -12,14 +12,14 @@ import (
 	"path"
 	"syscall"
 
+	"github.com/diditaxi/codis/config"
+	"github.com/diditaxi/codis/pkg/utils"
 	"github.com/ngaut/go-zookeeper/zk"
 	"github.com/ngaut/zkhelper"
-	"github.com/diditaxi/codis/pkg/utils"
 
 	"net/http"
 	_ "net/http/pprof"
 
-	"github.com/c4pt0r/cfg"
 	docopt "github.com/docopt/docopt-go"
 	"github.com/juju/errors"
 	log "github.com/ngaut/logging"
@@ -31,7 +31,6 @@ var (
 	zkAddr      string
 	productName string
 	configFile  string
-	config      *cfg.Cfg
 	zkLock      zkhelper.ZLocker
 	livingNode  string
 )
@@ -190,15 +189,13 @@ func main() {
 	// set config file
 	if args["-c"] != nil {
 		configFile = args["-c"].(string)
-		config, err = utils.InitConfigFromFile(configFile)
+		err = config.ReloadConfig(configFile)
 		if err != nil {
-			Fatal(err)
+			log.Fatal(err)
 		}
 	} else {
-		config, err = utils.InitConfig()
-		if err != nil {
-			Fatal(err)
-		}
+		config.ProxyConfig.ProductName = "test"
+		config.ProxyConfig.ProxyId = "localhost:2181"
 	}
 
 	// set output log file
@@ -211,8 +208,11 @@ func main() {
 		log.SetLevelByString(args["--log-level"].(string))
 	}
 
-	productName, _ = config.ReadString("product", "test")
-	zkAddr, _ = config.ReadString("zk", "localhost:2181")
+	//productName, _ = config.ReadString("product", "test")
+	//zkAddr, _ = config.ReadString("zk", "localhost:2181")
+
+	productName = config.ProxyConfig.ProductName
+	zkAddr = config.ProxyConfig.ProxyId
 	zkConn, _ = zkhelper.ConnectToZk(zkAddr)
 	zkLock = utils.GetZkLock(zkConn, productName)
 

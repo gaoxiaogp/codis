@@ -84,6 +84,10 @@ func GetProxyPath(productName string) string {
 	return fmt.Sprintf("/zk/codis/db_%s/proxy", productName)
 }
 
+func GetProxyConnErrPath(productName string) string {
+	return fmt.Sprintf("/zk/codis/db_%s/proxy_conn_err", productName)
+}
+
 func CreateProxyInfo(zkConn zkhelper.Conn, productName string, pi *ProxyInfo) (string, error) {
 	data, err := json.Marshal(pi)
 	if err != nil {
@@ -94,6 +98,43 @@ func CreateProxyInfo(zkConn zkhelper.Conn, productName string, pi *ProxyInfo) (s
 		0, zkhelper.DefaultDirACLs())
 	return zkConn.Create(path.Join(GetProxyPath(productName), pi.Id), data,
 		zk.FlagEphemeral, zkhelper.DefaultDirACLs())
+}
+
+func CreateConnErrProxy(zkConn zkhelper.Conn, productName string, pi *ProxyInfo) (string, error) {
+	data, err := json.Marshal(pi)
+	if err != nil {
+		return "", errors.Trace(err)
+	}
+
+	zkhelper.CreateRecursive(zkConn, GetProxyConnErrPath(productName), string(data),
+		0, zkhelper.DefaultDirACLs())
+	return zkConn.Create(path.Join(GetProxyConnErrPath(productName), pi.Id), data,
+		zk.FlagEphemeral, zkhelper.DefaultDirACLs())
+}
+
+func DeleteConnErrProxy(zkConn zkhelper.Conn, productName string) error {
+	return zkhelper.DeleteRecursive(zkConn, GetProxyConnErrPath(productName), -1)
+}
+
+func ErrorProxyList(zkConn zkhelper.Conn, productName string, filter func(*ProxyInfo) bool) ([]ProxyInfo, error) {
+	ret := make([]ProxyInfo, 0)
+	root := GetProxyConnErrPath(productName)
+	proxies, _, err := zkConn.Children(root)
+	if err != nil && !zkhelper.ZkErrorEqual(err, zk.ErrNoNode) {
+		return nil, errors.Trace(err)
+	}
+
+	for _, proxyName := range proxies {
+		pi, err := GetProxyInfo(zkConn, productName, proxyName)
+		if err != nil {
+			return nil, errors.Trace(err)
+		}
+		if filter == nil || filter(pi) == true {
+			ret = append(ret, *pi)
+		}
+	}
+
+	return ret, nil
 }
 
 func ProxyList(zkConn zkhelper.Conn, productName string, filter func(*ProxyInfo) bool) ([]ProxyInfo, error) {

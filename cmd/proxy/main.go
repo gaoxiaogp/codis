@@ -14,9 +14,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/diditaxi/codis/config"
 	"github.com/diditaxi/codis/pkg/proxy/router"
 	"github.com/diditaxi/codis/pkg/utils"
-
 	"github.com/docopt/docopt-go"
 	log "github.com/ngaut/logging"
 )
@@ -27,6 +27,7 @@ var (
 	httpAddr      = ":9001"
 	configFile    = "config.ini"
 	whitelistFile = ""
+	whitelistChan = make(chan map[string]string, 1)
 )
 
 var usage = `usage: proxy [-c <config_file>] [-w <whitelist_file>] [-L <log_file>] [--log-level=<loglevel>] [--cpu=<cpu_num>] [--addr=<proxy_listen_addr>] [--http-addr=<debug_http_server_addr>]
@@ -60,6 +61,16 @@ func handleChangeLog(w http.ResponseWriter, r *http.Request) {
 	name := r.Form.Get("name")
 	log.SetOutputByName(name)
 	log.Info("set log name to", name)
+}
+
+func handleLoadWhitelist(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	name := r.Form.Get("whitelist")
+	list := readWhiteList(name)
+	if list != nil {
+		whitelistChan <- list
+		log.Infof("reload whitelist success: %s", name)
+	}
 }
 
 func readWhiteList(fPath string) map[string]string {
@@ -144,19 +155,24 @@ func main() {
 
 	http.HandleFunc("/setloglevel", handleSetLogLevel)
 	http.HandleFunc("/changelogname", handleChangeLog)
+	http.HandleFunc("/reloadWhitelist", handleLoadWhitelist)
 	go http.ListenAndServe(httpAddr, nil)
 	log.Info("running on ", addr)
-	conf, err := router.LoadConf(configFile)
+
+	err = config.ReloadConfig(configFile)
 	if err != nil {
 		log.Fatal(err)
 	}
+	conf := router.GetConf(config.ProxyConfig.ProductName,
+		config.ProxyConfig.ProxyId,
+		config.ProxyConfig.ZkAddr)
 
 	var ipwhielist map[string]string
 	if whitelistFile != "" {
 		ipwhielist = readWhiteList(whitelistFile)
 	}
 
-	s := router.NewServer(addr, httpAddr, conf, ipwhielist)
+	s := router.NewServer(addr, httpAddr, conf, ipwhielist, whitelistChan)
 	s.Run()
 	log.Warning("exit")
 }

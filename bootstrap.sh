@@ -33,6 +33,7 @@ go get -u github.com/nu7hatch/gouuid
 go get -u github.com/docopt/docopt-go
 go get -u github.com/cupcake/rdb
 go get -u github.com/alicebob/miniredis
+go get -u gopkg.in/yaml.v2
 
 make || exit $?
 make gotest

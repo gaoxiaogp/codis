@@ -6,6 +6,7 @@ package topology
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/diditaxi/codis/pkg/utils"
 	"path"
 
 	"github.com/ngaut/zkhelper"
@@ -164,4 +165,52 @@ func (top *Topology) WatchNode(path string, evtbus chan interface{}) ([]byte, er
 
 	go top.doWatch(evtch, evtbus)
 	return content, nil
+}
+
+func (top *Topology) VoteConnError(pi *models.ProxyInfo) (bool, error) {
+	plist, err := models.ProxyList(top.zkConn, top.ProductName, nil)
+	if err != nil {
+		return false, err
+	}
+	listLen := len(plist)
+
+	zkLock := utils.GetZkConnErrLock(top.zkConn, top.ProductName)
+	r := zkLock.LockWithTimeout(0, fmt.Sprintf("proxy_err_conn"))
+	if r != nil {
+		return false, nil
+	}
+	defer func() {
+		err := zkLock.Unlock()
+		if err != nil {
+			log.Error(err)
+		}
+	}()
+
+	_, err = models.CreateConnErrProxy(top.zkConn, top.ProductName, pi)
+	if err != nil {
+		return false, err
+	}
+
+	errPlist, err := models.ErrorProxyList(top.zkConn, top.ProductName, nil)
+	if err != nil {
+		errPlist = make([]models.ProxyInfo, 0)
+	}
+	errLen := len(errPlist)
+
+	if errLen > listLen/2 {
+		if err = models.DeleteConnErrProxy(top.zkConn, top.ProductName); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (top *Topology) DoPromte(groupId int) error {
+	group, err := models.GetGroup(top.zkConn, top.ProductName, groupId)
+	if err != nil {
+		return err
+	}
+	return group.PromoteAuto(top.zkConn)
 }

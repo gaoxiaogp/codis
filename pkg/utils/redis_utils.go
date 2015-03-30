@@ -4,10 +4,9 @@
 package utils
 
 import (
+	"github.com/garyburd/redigo/redis"
 	"strings"
 	"time"
-
-	"github.com/garyburd/redigo/redis"
 )
 
 var defaultTimeout = 1 * time.Second
@@ -107,6 +106,63 @@ func SlaveNoOne(addr string) error {
 	}
 	defer c.Close()
 	_, err = c.Do("SLAVEOF", "NO", "ONE")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func OpAof(addr string, on bool) error {
+	c, err := redis.DialTimeout("tcp", addr, defaultTimeout, defaultTimeout, defaultTimeout)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	if on {
+		_, err = c.Do("config", "set", "appendonly", "yes")
+	} else {
+		_, err = c.Do("config", "set", "appendonly", "no")
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SetSlaveOf(addrMaster string, addrSlave string) error {
+	c, err := redis.DialTimeout("tcp", addrSlave, defaultTimeout, defaultTimeout, defaultTimeout)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	temp := strings.Split(addrMaster, ":")
+	ip := temp[0]
+	port := temp[1]
+	_, err = c.Do("SLAVEOF", ip, port)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func Ping(addr string) error {
+	c, err := redis.DialTimeout("tcp", addr, defaultTimeout, defaultTimeout, defaultTimeout)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	return err
+}
+
+func CloseRdb(addr string) error {
+	c, err := redis.DialTimeout("tcp", addr, defaultTimeout, defaultTimeout, defaultTimeout)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	_, err = c.Do("config", "set", "save", "")
 	if err != nil {
 		return err
 	}

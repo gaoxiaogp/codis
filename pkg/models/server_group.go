@@ -6,14 +6,14 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/diditaxi/codis/config"
+	"github.com/ngaut/zkhelper"
 	"strconv"
 	"strings"
 
-	"github.com/ngaut/zkhelper"
-
 	"github.com/diditaxi/codis/pkg/utils"
-
 	"github.com/juju/errors"
+	log "github.com/ngaut/logging"
 )
 
 // redis server instance
@@ -226,6 +226,55 @@ func (self *ServerGroup) Promote(conn zkhelper.Conn, addr string) error {
 	// promote new server to master
 	s.Type = SERVER_TYPE_MASTER
 	err = self.AddServer(conn, &s)
+	return errors.Trace(err)
+}
+
+func (self *ServerGroup) PromoteAuto(conn zkhelper.Conn) error {
+	var sMaster *Server
+	var sSlave *Server
+
+	sMaster = nil
+	sSlave = nil
+	for i := 0; i < len(self.Servers); i++ {
+		if self.Servers[i].Type == SERVER_TYPE_MASTER {
+			sMaster = &self.Servers[i]
+		} else if self.Servers[i].Type == SERVER_TYPE_SLAVE &&
+			utils.Ping(self.Servers[i].Addr) == nil {
+			sSlave = &self.Servers[i]
+		}
+
+		if sMaster != nil && sSlave != nil {
+			break
+		}
+	}
+
+	err := utils.SlaveNoOne(sSlave.Addr)
+	if err != nil {
+		return errors.Trace(err)
+	}
+
+	if !config.ProxyConfig.MasterOp.Aof {
+		err = utils.OpAof(sSlave.Addr, false)
+		if err != nil {
+			log.Errorf("close new master aof fail: %s", err.Error())
+		}
+	}
+	if !config.ProxyConfig.MasterOp.Rdb {
+		err = utils.CloseRdb(sSlave.Addr)
+		if err != nil {
+			log.Errorf("close new master rdb fail: %s", err.Error())
+		}
+	}
+	// old master may be nil
+	sMaster.Type = SERVER_TYPE_SLAVE
+	err = self.AddServer(conn, sMaster)
+	if err != nil {
+		return errors.Trace(err)
+	}
+
+	// promote new server to master
+	sSlave.Type = SERVER_TYPE_MASTER
+	err = self.AddServer(conn, sSlave)
 	return errors.Trace(err)
 }
 

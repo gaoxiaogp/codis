@@ -17,12 +17,12 @@ import (
 
 	topo "github.com/diditaxi/codis/pkg/proxy/router/topology"
 
+	"github.com/diditaxi/codis/config"
 	"github.com/diditaxi/codis/pkg/models"
 	"github.com/diditaxi/codis/pkg/proxy/cachepool"
 	"github.com/diditaxi/codis/pkg/proxy/group"
 	"github.com/diditaxi/codis/pkg/proxy/parser"
 	"github.com/diditaxi/codis/pkg/proxy/redispool"
-
 	"github.com/juju/errors"
 	"github.com/ngaut/go-zookeeper/zk"
 	stats "github.com/ngaut/gostats"
@@ -59,7 +59,8 @@ type Server struct {
 	counter   *stats.Counters
 	OnSuicide OnSuicideFun
 
-	ipwhiteList map[string]string
+	ipwhiteList  map[string]string
+	connErrCount int
 }
 
 func (s *Server) clearSlot(i int) {
@@ -267,13 +268,16 @@ check_state:
 		s.concurrentLimiter.Put(token)
 	}()
 
+	groupId := s.slots[i].slotInfo.GroupId
 	if err := s.handleMigrateState(i, k); err != nil {
+		s.checkConnError(groupId, err.Error())
 		return errors.Trace(err)
 	}
 
 	//get redis connection
 	redisConn, err := s.pools.GetConn(s.slots[i].dst.Master())
 	if err != nil {
+		s.checkConnError(groupId, err.Error())
 		return errors.Trace(err)
 	}
 
@@ -283,6 +287,29 @@ check_state:
 	}
 	s.pools.ReleaseConn(redisConn)
 	return errors.Trace(clientErr)
+}
+
+func (s *Server) checkConnError(groupId int, errMsg string) {
+	if strings.Contains(errMsg, "connection refused") {
+		s.connErrCount = s.connErrCount + 1
+		if s.connErrCount >= config.ProxyConfig.ConnErrLlimit { //continuous fail
+			go s.handleConnError(groupId)
+		}
+	} else {
+		s.connErrCount = 0
+	}
+}
+
+func (s *Server) handleConnError(groupId int) {
+	//vote to zk, conn err happens
+	isPromote, err := s.top.VoteConnError(&s.pi)
+	if err == nil && isPromote {
+		err = s.top.DoPromte(groupId)
+	}
+
+	if err != nil {
+		log.Errorf("vote error, %s", err.Error())
+	}
 }
 
 func (s *Server) handleConn(c net.Conn) {
@@ -372,6 +399,17 @@ func (s *Server) Run() {
 				go s.handleConn(conn)
 			} else {
 				conn.Close()
+			}
+		}
+	}
+}
+
+func (s *Server) ReadWhitelist(c chan map[string]string) {
+	for {
+		select {
+		case s.ipwhiteList = <-c:
+			if s.ipwhiteList == nil {
+				log.Error("get white list nil")
 			}
 		}
 	}
@@ -598,7 +636,7 @@ func (s *Server) RegisterAndWait() {
 	s.waitOnline()
 }
 
-func NewServer(addr string, debugVarAddr string, conf *Conf, ipwhiteList map[string]string) *Server {
+func NewServer(addr string, debugVarAddr string, conf *Conf, ipwhiteList map[string]string, whiteListChan chan map[string]string) *Server {
 	log.Infof("%+v", conf)
 	s := &Server{
 		evtbus:            make(chan interface{}, 100),
@@ -644,7 +682,7 @@ func NewServer(addr string, debugVarAddr string, conf *Conf, ipwhiteList map[str
 
 	//start event handler
 	go s.handleTopoEvent()
-
+	go s.ReadWhitelist(whiteListChan)
 	log.Info("proxy start ok")
 
 	return s

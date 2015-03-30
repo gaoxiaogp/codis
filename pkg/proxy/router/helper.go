@@ -248,6 +248,15 @@ type Conf struct {
 	f           topology.ZkFactory
 }
 
+func GetConf(productName string, proxyId string, zkAddr string) *Conf {
+	srvConf := &Conf{}
+	srvConf.productName = productName
+	srvConf.proxyId = proxyId
+	srvConf.zkAddr = zkAddr
+
+	return srvConf
+}
+
 func LoadConf(configFile string) (*Conf, error) {
 	srvConf := &Conf{}
 	conf, err := utils.InitConfigFromFile(configFile)

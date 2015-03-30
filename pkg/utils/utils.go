@@ -41,6 +41,12 @@ func GetZkLock(zkConn zkhelper.Conn, productName string) zkhelper.ZLocker {
 	return ret
 }
 
+func GetZkConnErrLock(zkConn zkhelper.Conn, productName string) zkhelper.ZLocker {
+	zkPath := fmt.Sprintf("/zk/codis/db_%s/CONNERR_LOCK", productName)
+	ret := zkhelper.CreateMutex(zkConn, zkPath)
+	return ret
+}
+
 func GetExecutorPath() string {
 	filedirectory := filepath.Dir(os.Args[0])
 	execPath, err := filepath.Abs(filedirectory)
