@@ -12,10 +12,11 @@ type Config struct {
 		Rdb bool
 		Aof bool
 	}
-	ConnErrLlimit int
-	ProxyId       string
-	ProductName   string
-	ZkAddr        string
+	ConnErrLlimit   int
+	ConcurrentLimit int
+	ProxyId         string
+	ProductName     string
+	ZkAddr          string
 }
 
 var ProxyConfig Config

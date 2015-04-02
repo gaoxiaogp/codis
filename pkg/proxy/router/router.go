@@ -638,6 +638,10 @@ func (s *Server) RegisterAndWait() {
 
 func NewServer(addr string, debugVarAddr string, conf *Conf, ipwhiteList map[string]string, whiteListChan chan map[string]string) *Server {
 	log.Infof("%+v", conf)
+	concurrentLimit := 100
+	if config.ProxyConfig.ConcurrentLimit > 0 {
+		concurrentLimit = config.ProxyConfig.ConcurrentLimit
+	}
 	s := &Server{
 		evtbus:            make(chan interface{}, 100),
 		top:               topo.NewTopo(conf.productName, conf.zkAddr, conf.f),
@@ -645,7 +649,7 @@ func NewServer(addr string, debugVarAddr string, conf *Conf, ipwhiteList map[str
 		lastActionSeq:     -1,
 		startAt:           time.Now(),
 		addr:              addr,
-		concurrentLimiter: tokenlimiter.NewTokenLimiter(100),
+		concurrentLimiter: tokenlimiter.NewTokenLimiter(concurrentLimit),
 		moper:             NewMultiOperator(addr),
 		pools:             cachepool.NewCachePool(),
 		ipwhiteList:       ipwhiteList,
