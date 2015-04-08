@@ -212,5 +212,5 @@ func (top *Topology) DoPromte(groupId int) error {
 	if err != nil {
 		return err
 	}
-	return group.PromoteAuto(top.zkConn)
+	return group.PromoteAuto(top.zkConn, "")
 }

@@ -229,7 +229,7 @@ func (self *ServerGroup) Promote(conn zkhelper.Conn, addr string) error {
 	return errors.Trace(err)
 }
 
-func (self *ServerGroup) PromoteAuto(conn zkhelper.Conn) error {
+func (self *ServerGroup) PromoteAuto(conn zkhelper.Conn, serverAddr string) error {
 	var sMaster *Server
 	var sSlave *Server
 
@@ -238,15 +238,25 @@ func (self *ServerGroup) PromoteAuto(conn zkhelper.Conn) error {
 	for i := 0; i < len(self.Servers); i++ {
 		if self.Servers[i].Type == SERVER_TYPE_MASTER {
 			sMaster = &self.Servers[i]
-		} else if self.Servers[i].Type == SERVER_TYPE_SLAVE &&
-			utils.Ping(self.Servers[i].Addr) == nil {
-			sSlave = &self.Servers[i]
+		} else if serverAddr == "" {
+			if self.Servers[i].Type == SERVER_TYPE_SLAVE &&
+				utils.Ping(self.Servers[i].Addr) == nil {
+				sSlave = &self.Servers[i]
+			}
+		} else if self.Servers[i].Addr == serverAddr {
+			if utils.Ping(self.Servers[i].Addr) == nil {
+				sSlave = &self.Servers[i]
+			} else {
+				err := errors.New("cannot connect to slave addr")
+				return errors.Trace(err)
+			}
 		}
 
 		if sMaster != nil && sSlave != nil {
 			break
 		}
 	}
+	log.Infof("new master is: %s", sSlave.Addr)
 
 	err := utils.SlaveNoOne(sSlave.Addr)
 	if err != nil {

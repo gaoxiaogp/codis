@@ -22,6 +22,7 @@ func cmdServer(argv []string) (err error) {
 	cconfig server add <group_id> <redis_addr> <role>
 	cconfig server remove <group_id> <redis_addr>
 	cconfig server promote <group_id> <redis_addr>
+	cconfig server promote-auto <group_id> <redis_addr>
 	cconfig server add-group <group_id>
 	cconfig server remove-group <group_id>
 `
@@ -56,6 +57,13 @@ func cmdServer(argv []string) (err error) {
 	if args["add-group"].(bool) {
 		return runAddServerGroup(groupId)
 	}
+	if args["promote-auto"].(bool) {
+		serverAddr, ok := args["<redis_addr>"].(string)
+		if !ok {
+			serverAddr = ""
+		}
+		return runPromoteServerToMasterAuto(groupId, serverAddr)
+	}
 
 	serverAddr := args["<redis_addr>"].(string)
 	if args["add"].(bool) {
@@ -87,6 +95,19 @@ func runPromoteServerToMaster(groupId int, addr string) error {
 	}
 
 	err = group.Promote(zkConn, addr)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func runPromoteServerToMasterAuto(groupId int, addr string) error {
+	group, err := models.GetGroup(zkConn, productName, groupId)
+	if err != nil {
+		return err
+	}
+
+	err = group.PromoteAuto(zkConn, addr)
 	if err != nil {
 		return err
 	}
