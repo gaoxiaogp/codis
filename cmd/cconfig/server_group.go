@@ -59,7 +59,7 @@ func cmdServer(argv []string) (err error) {
 	}
 	if args["promote-auto"].(bool) {
 		serverAddr, ok := args["<redis_addr>"].(string)
-		if !ok {
+		if !ok || serverAddr == "random" {
 			serverAddr = ""
 		}
 		return runPromoteServerToMasterAuto(groupId, serverAddr)

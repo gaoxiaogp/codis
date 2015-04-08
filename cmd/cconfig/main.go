@@ -195,7 +195,7 @@ func main() {
 		}
 	} else {
 		config.ProxyConfig.ProductName = "test"
-		config.ProxyConfig.ProxyId = "localhost:2181"
+		config.ProxyConfig.ZkAddr = "localhost:2181"
 	}
 
 	// set output log file
@@ -212,7 +212,7 @@ func main() {
 	//zkAddr, _ = config.ReadString("zk", "localhost:2181")
 
 	productName = config.ProxyConfig.ProductName
-	zkAddr = config.ProxyConfig.ProxyId
+	zkAddr = config.ProxyConfig.ZkAddr
 	zkConn, _ = zkhelper.ConnectToZk(zkAddr)
 	zkLock = utils.GetZkLock(zkConn, productName)
 
