@@ -256,7 +256,7 @@ func (self *ServerGroup) PromoteAuto(conn zkhelper.Conn, serverAddr string) erro
 			break
 		}
 	}
-	log.Infof("new master is: %s", sSlave.Addr)
+	log.Warningf("warning change master from %s to %s", sMaster.Addr, sSlave.Addr)
 
 	err := utils.SlaveNoOne(sSlave.Addr)
 	if err != nil {
