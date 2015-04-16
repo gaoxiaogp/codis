@@ -256,7 +256,7 @@ func (self *ServerGroup) PromoteAuto(conn zkhelper.Conn, serverAddr string) erro
 			break
 		}
 	}
-	log.Warningf("warning change master from %s to %s", sMaster.Addr, sSlave.Addr)
+	log.Warningf("change master done, product_name: %s, group_id: %d, from: %s, to %s", self.ProductName, self.Id, sMaster.Addr, sSlave.Addr)
 
 	err := utils.SlaveNoOne(sSlave.Addr)
 	if err != nil {
