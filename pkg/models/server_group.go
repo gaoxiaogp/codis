@@ -275,7 +275,7 @@ func (self *ServerGroup) PromoteAuto(conn zkhelper.Conn, serverAddr string) erro
 			log.Errorf("close new master rdb fail: %s", err.Error())
 		}
 	}
-	// old master may be nil
+
 	sMaster.Type = SERVER_TYPE_SLAVE
 	err = self.AddServer(conn, sMaster)
 	if err != nil {
@@ -285,6 +285,16 @@ func (self *ServerGroup) PromoteAuto(conn zkhelper.Conn, serverAddr string) erro
 	// promote new server to master
 	sSlave.Type = SERVER_TYPE_MASTER
 	err = self.AddServer(conn, sSlave)
+
+	for i := 0; i < len(self.Servers); i++ {
+		if self.Servers[i].Addr != sSlave.Addr {
+			e := utils.SetSlaveOf(sSlave.Addr, self.Servers[i].Addr)
+			if e != nil {
+				log.Errorf("set slaveof failed, addr: %s, error: %s", self.Servers[i].Addr, e.Error())
+			}
+		}
+	}
+
 	return errors.Trace(err)
 }
 
