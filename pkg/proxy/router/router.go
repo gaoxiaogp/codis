@@ -290,7 +290,7 @@ check_state:
 }
 
 func (s *Server) checkConnError(groupId int, errMsg string) {
-	if strings.Contains(errMsg, "connection refused") {
+	if strings.Contains(errMsg, "connection refused") && config.ProxyConfig.AutoFailOver {
 		s.connErrCount = s.connErrCount + 1
 		if s.connErrCount >= config.ProxyConfig.ConnErrLlimit { //continuous fail
 			go s.handleConnError(groupId)
