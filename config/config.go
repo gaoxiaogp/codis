@@ -17,6 +17,7 @@ type Config struct {
 	ProxyId         string
 	ProductName     string
 	ZkAddr          string
+	AutoFailOver    bool
 }
 
 var ProxyConfig Config
