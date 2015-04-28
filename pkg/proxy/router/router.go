@@ -251,17 +251,18 @@ check_state:
 		//	log.Warningf("op: %s, key:%s, on: %s, too long %d", opstr,
 		//			string(k), s.slots[i].dst.Master(), int(sec))
 		//}
+		remoteAddr := c.Conn.RemoteAddr().String()
 		if msec > 300 {
-			log.Errorf("op: %s, key:%s, on: %s, cost: %d", opstr,
+			log.Errorf("remoteAddr: %s, op: %s, key:%s, on: %s, cost: %d", remoteAddr, opstr,
 				string(k), s.slots[i].dst.Master(), int(msec))
 		} else if msec > 100 {
-			log.Warningf("op: %s, key:%s, on: %s, cost: %d", opstr,
+			log.Warningf("remoteAddr:%s, op: %s, key:%s, on: %s, cost: %d", remoteAddr, opstr,
 				string(k), s.slots[i].dst.Master(), int(msec))
 		} else if msec > 50 {
-			log.Infof("op: %s, key:%s, on: %s, cost: %d", opstr,
+			log.Infof("remoteAddr: %s, op: %s, key:%s, on: %s, cost: %d", remoteAddr, opstr,
 				string(k), s.slots[i].dst.Master(), int(msec))
 		} else if msec > 20 {
-			log.Debugf("op: %s, key:%s, on: %s, cost: %d", opstr,
+			log.Debugf("remoteAddr: %s, op: %s, key:%s, on: %s, cost: %d", remoteAddr, opstr,
 				string(k), s.slots[i].dst.Master(), int(msec))
 		}
 		recordResponseTime(s.counter, time.Duration(msec/1000)*1000)
